@@ -19,6 +19,9 @@ python3 strava_activities.py stats
 
 # Show most recent activity
 python3 strava_activities.py last
+
+# Fetch activities in a date range
+python3 strava_activities.py fetch-range 2024-01-01 2024-01-31
 ```
 
 ## Requirements
@@ -53,3 +56,5 @@ After installing this skill in OpenClaw you can ask:
 - "What are my Strava stats this week?"
 - "What was my last Strava workout?"
 - "Fetch my Strava activities"
+- "Show my Strava activities from January 2024"
+- "Fetch activities between 2024-03-01 and 2024-03-31"

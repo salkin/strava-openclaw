@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import time
+from datetime import datetime, timezone
 from stravalib.client import Client
 
 
@@ -50,9 +51,9 @@ def get_client():
     return client
 
 
-def meters_to_miles(meters):
-    """Convert meters to miles."""
-    return float(meters) * 0.000621371 if meters else 0.0
+def meters_to_km(meters):
+    """Convert meters to kilometers."""
+    return float(meters) / 1000.0 if meters else 0.0
 
 
 def format_duration(td):
@@ -71,7 +72,7 @@ def fetch_activities(limit=DEFAULT_ACTIVITY_LIMIT):
 
     print(f"📊 Recent {len(activities)} activities:\n")
     for i, activity in enumerate(activities, 1):
-        distance_mi = meters_to_miles(activity.distance)
+        distance_km = meters_to_km(activity.distance)
         moving_time = format_duration(activity.moving_time)
         date_str = (
             activity.start_date_local.strftime("%Y-%m-%d %H:%M")
@@ -80,7 +81,7 @@ def fetch_activities(limit=DEFAULT_ACTIVITY_LIMIT):
         )
         print(f"{i}. {activity.name}")
         print(
-            f"   Type: {activity.type} | Distance: {distance_mi:.2f} mi"
+            f"   Type: {activity.type} | Distance: {distance_km:.2f} km"
             f" | Time: {moving_time}"
         )
         print(f"   Date: {date_str}\n")
@@ -98,18 +99,18 @@ def show_stats():
     stats = client.get_athlete_stats()
 
     if stats.recent_run_totals:
-        run_mi = meters_to_miles(stats.recent_run_totals.distance)
+        run_km = meters_to_km(stats.recent_run_totals.distance)
         run_time = format_duration(stats.recent_run_totals.moving_time)
         print(f"\n🏃 Recent Running (last 4 weeks):")
-        print(f"   Distance: {run_mi:.2f} mi")
+        print(f"   Distance: {run_km:.2f} km")
         print(f"   Time: {run_time}")
         print(f"   Runs: {stats.recent_run_totals.count}")
 
     if stats.recent_ride_totals:
-        ride_mi = meters_to_miles(stats.recent_ride_totals.distance)
+        ride_km = meters_to_km(stats.recent_ride_totals.distance)
         ride_time = format_duration(stats.recent_ride_totals.moving_time)
         print(f"\n🚴 Recent Cycling (last 4 weeks):")
-        print(f"   Distance: {ride_mi:.2f} mi")
+        print(f"   Distance: {ride_km:.2f} km")
         print(f"   Time: {ride_time}")
         print(f"   Rides: {stats.recent_ride_totals.count}")
 
@@ -124,7 +125,7 @@ def show_last_activity():
         return
 
     activity = activities[0]
-    distance_mi = meters_to_miles(activity.distance)
+    distance_km = meters_to_km(activity.distance)
     moving_time = format_duration(activity.moving_time)
     date_str = (
         activity.start_date_local.strftime("%Y-%m-%d %H:%M")
@@ -134,24 +135,83 @@ def show_last_activity():
 
     print(f"🏃 Last Activity: {activity.name}")
     print(f"   Type: {activity.type}")
-    print(f"   Distance: {distance_mi:.2f} mi")
+    print(f"   Distance: {distance_km:.2f} km")
     print(f"   Moving Time: {moving_time}")
     print(f"   Date: {date_str}")
+
+
+def fetch_activities_range(after_str, before_str=None):
+    """Fetch and display activities within a date range (YYYY-MM-DD)."""
+    try:
+        after_dt = datetime.strptime(after_str, "%Y-%m-%d").replace(
+            tzinfo=timezone.utc
+        )
+    except ValueError:
+        print(f"❌ Invalid date format for AFTER: {after_str!r}. Use YYYY-MM-DD.")
+        sys.exit(1)
+
+    before_dt = None
+    if before_str:
+        try:
+            before_dt = datetime.strptime(before_str, "%Y-%m-%d").replace(
+                hour=23, minute=59, second=59, tzinfo=timezone.utc
+            )
+        except ValueError:
+            print(
+                f"❌ Invalid date format for BEFORE: {before_str!r}. Use YYYY-MM-DD."
+            )
+            sys.exit(1)
+
+    client = get_client()
+    activities = list(
+        client.get_activities(after=after_dt, before=before_dt)
+    )
+
+    if not activities:
+        range_desc = f"from {after_str}"
+        if before_str:
+            range_desc += f" to {before_str}"
+        print(f"No activities found {range_desc}.")
+        return
+
+    range_label = after_str
+    if before_str:
+        range_label += f" → {before_str}"
+    print(f"📊 {len(activities)} activities ({range_label}):\n")
+    for i, activity in enumerate(activities, 1):
+        distance_km = meters_to_km(activity.distance)
+        moving_time = format_duration(activity.moving_time)
+        date_str = (
+            activity.start_date_local.strftime("%Y-%m-%d %H:%M")
+            if activity.start_date_local
+            else "N/A"
+        )
+        print(f"{i}. {activity.name}")
+        print(
+            f"   Type: {activity.type} | Distance: {distance_km:.2f} km"
+            f" | Time: {moving_time}"
+        )
+        print(f"   Date: {date_str}\n")
 
 
 COMMANDS = {
     "fetch": (fetch_activities, "Fetch recent activities"),
     "stats": (show_stats, "Show athlete stats (last 4 weeks)"),
     "last": (show_last_activity, "Show the most recent activity"),
+    "fetch-range": (
+        fetch_activities_range,
+        "Fetch activities for a date range (requires AFTER date)",
+    ),
 }
 
 USAGE = """\
-Usage: strava_activities.py <command>
+Usage: strava_activities.py <command> [args]
 
 Commands:
-  fetch   Fetch recent activities (default: 10)
-  stats   Show athlete stats for the last 4 weeks
-  last    Show details of the most recent activity
+  fetch                        Fetch recent activities (default: 10)
+  stats                        Show athlete stats for the last 4 weeks
+  last                         Show details of the most recent activity
+  fetch-range AFTER [BEFORE]   Fetch activities between two dates (YYYY-MM-DD)
 """
 
 
@@ -169,7 +229,16 @@ def main():
 
     func, _ = COMMANDS[command]
     try:
-        func()
+        if command == "fetch-range":
+            if len(sys.argv) < 3:
+                print("❌ fetch-range requires an AFTER date (YYYY-MM-DD).")
+                print(USAGE)
+                sys.exit(1)
+            after = sys.argv[2]
+            before = sys.argv[3] if len(sys.argv) >= 4 else None
+            func(after, before)
+        else:
+            func()
     except Exception as exc:
         print(f"❌ Error: {exc}")
         sys.exit(1)
