@@ -4,7 +4,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from stravalib.client import Client
 
 
@@ -153,9 +153,11 @@ def fetch_activities_range(after_str, before_str=None):
     before_dt = None
     if before_str:
         try:
+            # Use the start of the day after `before_str` so activities across
+            # all timezones on that date are included.
             before_dt = datetime.strptime(before_str, "%Y-%m-%d").replace(
-                hour=23, minute=59, second=59, tzinfo=timezone.utc
-            )
+                tzinfo=timezone.utc
+            ) + timedelta(days=1)
         except ValueError:
             print(
                 f"❌ Invalid date format for BEFORE: {before_str!r}. Use YYYY-MM-DD."
