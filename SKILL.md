@@ -64,7 +64,7 @@ The setup wizard will:
 python3 strava_activities.py fetch
 ```
 
-Returns the 10 most recent activities with name, type, distance, moving time, and date.
+Returns the 10 most recent activities with name, type, distance (km), moving time, and date.
 
 ### Get athlete stats
 
@@ -82,6 +82,14 @@ python3 strava_activities.py last
 
 Returns details of the most recent activity.
 
+### Fetch activities by date range
+
+```bash
+python3 strava_activities.py fetch-range AFTER [BEFORE]
+```
+
+Fetches activities from `AFTER` up to (and including) `BEFORE`. Both dates use `YYYY-MM-DD` format. If `BEFORE` is omitted, all activities from `AFTER` to the present are returned.
+
 ## Examples
 
 Ask OpenClaw:
@@ -90,6 +98,8 @@ Ask OpenClaw:
 - "What are my Strava stats this week?"
 - "What was my last Strava workout?"
 - "Fetch my Strava activities"
+- "Show my Strava activities from January 2024"
+- "Fetch activities between 2024-03-01 and 2024-03-31"
 
 ## Files
 
