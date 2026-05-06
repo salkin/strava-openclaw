@@ -22,6 +22,9 @@ python3 strava_activities.py last
 
 # Fetch activities in a date range
 python3 strava_activities.py fetch-range 2024-01-01 2024-01-31
+
+# Force-refresh the Strava access token
+python3 strava_activities.py refresh-token
 ```
 
 ## Requirements
@@ -57,4 +60,5 @@ After installing this skill in OpenClaw you can ask:
 - "What was my last Strava workout?"
 - "Fetch my Strava activities"
 - "Show my Strava activities from January 2024"
-- "Fetch activities between 2024-03-01 and 2024-03-31"
+- "Fetch my Strava activities between 2024-03-01 and 2024-03-31"
+- "Refresh my Strava access token"

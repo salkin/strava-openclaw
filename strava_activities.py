@@ -51,6 +51,23 @@ def get_client():
     return client
 
 
+def refresh_token():
+    """Force-refresh the access token using the stored refresh token."""
+    creds = load_credentials()
+    client = Client()
+    token_response = client.refresh_access_token(
+        client_id=creds["client_id"],
+        client_secret=creds["client_secret"],
+        refresh_token=creds["refresh_token"],
+    )
+    creds["access_token"] = token_response["access_token"]
+    creds["refresh_token"] = token_response["refresh_token"]
+    creds["expires_at"] = token_response["expires_at"]
+    save_credentials(creds)
+    expires_dt = datetime.fromtimestamp(creds["expires_at"], tz=timezone.utc)
+    print(f"✅ Access token refreshed. Expires at {expires_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+
+
 def meters_to_km(meters):
     """Convert meters to kilometers."""
     return float(meters) / 1000.0 if meters else 0.0
@@ -204,6 +221,7 @@ COMMANDS = {
         fetch_activities_range,
         "Fetch activities for a date range (requires AFTER date)",
     ),
+    "refresh-token": (refresh_token, "Force-refresh the Strava access token"),
 }
 
 USAGE = """\
@@ -214,6 +232,7 @@ Commands:
   stats                        Show athlete stats for the last 4 weeks
   last                         Show details of the most recent activity
   fetch-range AFTER [BEFORE]   Fetch activities between two dates (YYYY-MM-DD)
+  refresh-token                Force-refresh the Strava access token
 """
 
 
